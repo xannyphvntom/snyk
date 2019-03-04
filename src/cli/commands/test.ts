@@ -252,6 +252,8 @@ function displayResult(res, options) {
   }
   let summary = testedInfoText + ', ' + chalk.red.bold(vulnCountText);
 
+  summary += `\n\nSee your test results here: ${config.ROOT}/org/${res.org}/test/${res.testPublicId}`;
+
   if (WIZARD_SUPPORTED_PMS.indexOf(packageManager) > -1) {
     summary += chalk.bold.green('\n\nRun `snyk wizard` to address these issues.');
   }
