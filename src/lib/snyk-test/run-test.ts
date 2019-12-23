@@ -301,9 +301,7 @@ async function getMultiPluginResult(
   for (const targetFile of targetFiles) {
     const optionsClone = _.cloneDeep(options);
     optionsClone.file = pathUtil.relative(root, targetFile);
-    optionsClone.packageManager = detectPackageManagerFromFile(
-      optionsClone.file,
-    );
+    optionsClone.packageManager = detectPackageManagerFromFile(targetFile);
     try {
       const inspectRes = await getSinglePluginResult(root, optionsClone);
       let resultWithScannedProjects: pluginApi.MultiProjectResult;
@@ -360,7 +358,12 @@ async function getDepsFromPlugin(
 
   if (options.allProjects) {
     // auto-detect only one-level deep for now
-    const targetFiles = await find(root, [], AUTO_DETECTABLE_FILES, options.detectionLevel);
+    const targetFiles = await find(
+      root,
+      [],
+      AUTO_DETECTABLE_FILES,
+      options.detectionLevel || 1,
+    );
     debug(
       `auto detect manifest files, found ${targetFiles.length}`,
       targetFiles,
@@ -368,8 +371,7 @@ async function getDepsFromPlugin(
     if (targetFiles.length === 0) {
       throw NoSupportedManifestsFoundError([root]);
     }
-    inspectRes = await getMultiPluginResult(root, options, targetFiles);
-    return inspectRes;
+    return await getMultiPluginResult(root, options, targetFiles);
   } else {
     // TODO: is this needed for the auto detect handling above?
     // don't override options.file if scanning multiple files at once
@@ -423,7 +425,9 @@ async function assembleLocalPayloads(
   root,
   options: Options & TestOptions,
 ): Promise<Payload[]> {
-  const analysisType = options.docker ? 'docker' : options.packageManager;
+  // For --all-projects packageManager is yet undefined here. Use 'all'
+  const analysisType =
+    (options.docker ? 'docker' : options.packageManager) || 'all';
   const spinnerLbl =
     'Analyzing ' +
     analysisType +
