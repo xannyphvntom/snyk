@@ -1,4 +1,6 @@
 import * as sinon from 'sinon';
+import { getWorkspaceJSON } from '../workspace-helper';
+import * as _ from 'lodash';
 
 interface AcceptanceTests {
   language: string;
@@ -203,10 +205,43 @@ export const AllProjectsTests: AcceptanceTests = {
         requestsMaven.body,
         'Same body for --all-projects and --file=pom.xml',
       );
-
-      t.pass('TODO');
     },
+    '`monitor mono-repo-project with lockfiles --all-projects --json`': (
+      params,
+      utils,
+    ) => async (t) => {
+      utils.chdirWorkspaces();
 
-    // TODO: monitor with --json flag
+      const noFixableResult = getWorkspaceJSON(
+        'fail-on',
+        'no-fixable',
+        'vulns-result.json',
+      );
+      params.server.setNextResponse(noFixableResult);
+
+      try {
+        const response = await params.cli.monitor('mono-repo-project', {
+          json: true,
+          allProjects: true,
+        });
+        const res = JSON.parse(response);
+        if (_.isObject(res)) {
+          t.pass('monitor outputted JSON');
+        } else {
+          t.fail('Failed parsing monitor JSON output');
+        }
+        const keyList = ['packageManager', 'manageUrl'];
+        t.true(Array.isArray(res), 'Response is an array');
+
+        t.equal(res.length, 3, 'Three monitor responses in the array');
+        res.forEach((project) => {
+          keyList.forEach((k) => {
+            !_.get(project, k) ? t.fail(k + 'not found') : t.pass(k + ' found');
+          });
+        });
+      } catch (error) {
+        t.fail('should not have failed');
+      }
+    },
   },
 };
